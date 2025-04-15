@@ -285,11 +285,13 @@ class CompletionResponse(MetricResponseMixin):
     :param content: The generated completion text
     :param stop_reason: Reason why generation stopped
     :param logprobs: Optional log probabilities for generated tokens
+    :param prompt_logprobs: Optional log probabilities for prompt tokens
     """
 
     content: str
     stop_reason: StopReason
     logprobs: Optional[List[TokenLogProbs]] = None
+    prompt_logprobs: Optional[List[TokenLogProbs]] = None
 
 
 @json_schema_type

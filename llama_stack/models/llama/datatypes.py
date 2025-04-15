@@ -204,6 +204,8 @@ class SamplingParams(BaseModel):
         based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.
     :param stop: Up to 4 sequences where the API will stop generating further tokens.
         The returned text will not contain the stop sequence.
+    :param prompt_logprobs: Number of log probabilities to return per prompt token.
+        The API will always return the log probability of the sampled token, so there may be up to prompt_logprobs+1 elements in the response.
     """
 
     strategy: SamplingStrategy = Field(default_factory=GreedySamplingStrategy)
@@ -211,6 +213,7 @@ class SamplingParams(BaseModel):
     max_tokens: Optional[int] = 0
     repetition_penalty: Optional[float] = 1.0
     stop: Optional[List[str]] = None
+    prompt_logprobs: Optional[int] = None
 
 
 class CheckpointQuantizationFormat(Enum):
