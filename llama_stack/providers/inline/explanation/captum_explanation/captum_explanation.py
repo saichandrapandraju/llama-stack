@@ -173,9 +173,7 @@ class CaptumExplanationImpl(
                         gen_args=gen_args
                     )
                     artifact = self._explanation_to_artifact(explanation)
-                    print("done artifact")
                     on_artifact_collected_cb(artifact)
-                    print("collected artifact")
 
                 on_status_change_cb(SchedulerJobStatus.completed)
                 on_log_message_cb("Batch explanation completed successfully")
@@ -194,7 +192,6 @@ class CaptumExplanationImpl(
 
     async def get_explanation_job_status(self, job_uuid: str) -> ExplanationJobStatusResponse:
         job = self._scheduler.get_job(job_uuid)
-        print(job.__dict__)
 
         match job.status:
             case SchedulerJobStatus.new | SchedulerJobStatus.scheduled:
