@@ -155,7 +155,6 @@ class OpenAICompatCompletionChoice(BaseModel):
     text: Optional[str] = None
     delta: Optional[OpenAICompatCompletionChoiceDelta] = None
     logprobs: Optional[OpenAICompatLogprobs] = None
-    prompt_logprobs: Optional[List[Optional[Dict[str, Dict[str, Union[float, str]]]]]]
 
 
 class OpenAICompatCompletionResponse(BaseModel):
@@ -193,8 +192,6 @@ def get_sampling_options(params: SamplingParams | None) -> dict:
         if params.stop is not None:
             options["stop"] = params.stop
 
-        if params.prompt_logprobs is not None:
-            options["extra_body"] = {"prompt_logprobs": params.prompt_logprobs}
 
     return options
 
@@ -238,17 +235,6 @@ def convert_openai_completion_logprobs(
         ]
     return None
 
-def convert_vllm_completion_prompt_logprobs(
-        prompt_logprobs: Optional[List[Optional[Dict[str, Dict[str, Union[float, str]]]]]]
-) -> Optional[List[TokenLogProbs]]:
-    if not prompt_logprobs:
-        return None
-    prompt_token_logprobs = []
-    for prompt_token_probs in prompt_logprobs:
-        if prompt_token_probs is not None:
-            mapping = {v['decoded_token']: v['logprob'] for v in list(prompt_token_probs.values())}
-            prompt_token_logprobs.append(TokenLogProbs(logprobs_by_token=mapping))
-    return prompt_token_logprobs
 
 def convert_openai_completion_logprobs_stream(text: str, logprobs: Optional[Union[float, OpenAICompatLogprobs]]):
     if logprobs is None:
@@ -271,7 +257,6 @@ def process_completion_response(
             stop_reason=StopReason.end_of_turn,
             content=choice.text[: -len("<|eot_id|>")],
             logprobs=convert_openai_completion_logprobs(choice.logprobs),
-            prompt_logprobs=convert_vllm_completion_prompt_logprobs(choice.prompt_logprobs)
         )
     # drop suffix <eom_id> if present and return stop reason as end of message
     if choice.text.endswith("<|eom_id|>"):
@@ -279,13 +264,11 @@ def process_completion_response(
             stop_reason=StopReason.end_of_message,
             content=choice.text[: -len("<|eom_id|>")],
             logprobs=convert_openai_completion_logprobs(choice.logprobs),
-            prompt_logprobs=convert_vllm_completion_prompt_logprobs(choice.prompt_logprobs)
         )
     return CompletionResponse(
         stop_reason=get_stop_reason(choice.finish_reason),
         content=choice.text,
         logprobs=convert_openai_completion_logprobs(choice.logprobs),
-        prompt_logprobs=convert_vllm_completion_prompt_logprobs(choice.prompt_logprobs)
     )
 
 
