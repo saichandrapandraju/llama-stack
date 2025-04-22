@@ -30,6 +30,7 @@ from captum.attr import (
 )
 
 import uuid
+import os
 
 from llama_stack.providers.utils.scheduler import JobArtifact, JobStatus as SchedulerJobStatus, Scheduler
 from llama_stack.apis.common.job_types import JobStatus
@@ -65,6 +66,7 @@ class CaptumExplanationImpl(
         attr_shap_sampling = ShapleyValueSampling(placeholder_model)
 
         self.tokenizer = AutoTokenizer.from_pretrained(self.config.tokenizer)
+        # openai_api = f"http://localhost:{os.environ.get('LLAMA_STACK_PORT', 8321)}/v1/openai/v1"
         log.info(f"Initializing VLLMProvider with base_url={self.config.url}")
         vllm_provider = VLLMProvider(api_url=self.config.url)
 

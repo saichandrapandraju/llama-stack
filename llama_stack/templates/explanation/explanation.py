@@ -13,12 +13,12 @@ from llama_stack.providers.inline.inference.sentence_transformers import (
 from llama_stack.providers.inline.vector_io.faiss.config import FaissVectorIOConfig
 from llama_stack.providers.remote.inference.vllm import VLLMInferenceAdapterConfig
 from llama_stack.templates.template import DistributionTemplate, RunConfigSettings
-from llama_stack.providers.inline.explanation.captum_explanation import CaptumExplanationConfig
+from llama_stack.providers.remote.explanation.captum import CaptumExplanationConfig
 
 def get_distribution_template() -> DistributionTemplate:
     providers = {
         "inference": ["remote::vllm", "inline::sentence-transformers"],
-        "explanation": ["inline::captum"],
+        "explanation": ["remote::captum"],
         "vector_io": ["inline::faiss", "remote::chromadb", "remote::pgvector"],
         "safety": ["inline::llama-guard"],
         "agents": ["inline::meta-reference"],
@@ -38,7 +38,7 @@ def get_distribution_template() -> DistributionTemplate:
     name = "explanation"
     explanation_provider = Provider(
         provider_id="captum-explanation",
-        provider_type="inline::captum",
+        provider_type="remote::captum",
         config=CaptumExplanationConfig.sample_run_config(
             url="${env.VLLM_URL:http://localhost:8000/v1}",
             tokenizer="${env.TOKENIZER}"

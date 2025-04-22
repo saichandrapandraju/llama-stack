@@ -14,7 +14,7 @@ apis:
 providers:
   explanation:
   - provider_id: captum-explanation
-    provider_type: inline::captum
+    provider_type: remote::captum
     config:
       url: ${env.VLLM_URL:http://localhost:8000/v1}
       tokenizer: ${env.TOKENIZER}
