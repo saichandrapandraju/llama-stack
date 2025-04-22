@@ -18,6 +18,7 @@ def available_providers() -> List[ProviderSpec]:
                 config_class="llama_stack.providers.remote.explanation.captum.CaptumExplanationConfig",
                 pip_packages=[
                     "git+https://github.com/saichandrapandraju/captum@remote-logprobs#egg=captum[remote]",
+                    "transformers"
                 ],
             )
         ),

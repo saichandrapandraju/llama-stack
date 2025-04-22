@@ -1,0 +1,9 @@
+version: '1'
+distribution_spec:
+  description: Use Captum for explanations.
+  providers:
+    explanation:
+    - remote::captum
+    telemetry:
+    - inline::meta-reference
+image_type: container

@@ -798,5 +798,9 @@
     "sentence-transformers --no-deps",
     "torch torchvision --index-url https://download.pytorch.org/whl/cpu",
     "git+https://github.com/saichandrapandraju/captum@remote-logprobs#egg=captum[remote]"
+  ],
+  "remote-captum": [
+    "git+https://github.com/saichandrapandraju/captum@remote-logprobs#egg=captum[remote]",
+    "transformers"
   ]
 }

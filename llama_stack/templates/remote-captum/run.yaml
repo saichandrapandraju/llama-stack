@@ -1,0 +1,43 @@
+version: '1'
+image_name: remote-captum
+apis:
+- explanation
+- telemetry
+providers:
+  explanation:
+  - provider_id: captum-explanation
+    provider_type: remote::captum
+    config:
+      url: ${env.VLLM_URL:http://localhost:8000/v1}
+      tokenizer: ${env.TOKENIZER}
+  telemetry:
+  - provider_id: meta-reference
+    provider_type: inline::meta-reference
+    config:
+      service_name: "${env.OTEL_SERVICE_NAME:\u200B}"
+      sinks: ${env.TELEMETRY_SINKS:console,sqlite}
+      sqlite_db_path: ${env.SQLITE_DB_PATH:~/.llama/distributions/remote-vllm/trace_store.db}
+metadata_store:
+  type: sqlite
+  db_path: ${env.SQLITE_STORE_DIR:~/.llama/distributions/remote-vllm}/registry.db
+models: []
+# - metadata: {}
+#   model_id: ${env.INFERENCE_MODEL}
+#   provider_id: vllm-inference
+#   model_type: llm
+shields: []
+vector_dbs: []
+datasets: []
+scoring_fns: []
+benchmarks: []
+tool_groups:
+- toolgroup_id: builtin::websearch
+  provider_id: tavily-search
+- toolgroup_id: builtin::rag
+  provider_id: rag-runtime
+- toolgroup_id: builtin::code_interpreter
+  provider_id: code-interpreter
+- toolgroup_id: builtin::wolfram_alpha
+  provider_id: wolfram-alpha
+server:
+  port: 8321
