@@ -1,8 +1,10 @@
 import logging
 from enum import Enum
-
+import json
+import os
+from pathlib import Path
+from datetime import datetime
 from typing import Union, Optional, List, Dict
-
 from llama_stack.apis.explanation import (
     Explanation,
     ExplanationResponse,
@@ -12,11 +14,8 @@ from llama_stack.apis.explanation import (
     ExplanationJobResultsResponse,
     ListExplanationJobsResponse
 )
-
 from llama_stack.apis.inference import InterleavedContent
-
 from .config import CaptumExplanationConfig
-
 from captum.attr import (
     FeatureAblation,
     ShapleyValues,
@@ -28,10 +27,7 @@ from captum.attr import (
     TextTokenInput,
     TextTemplateInput
 )
-
 import uuid
-import os
-
 from llama_stack.providers.utils.scheduler import JobArtifact, JobStatus as SchedulerJobStatus, Scheduler
 from llama_stack.apis.common.job_types import JobStatus
 
@@ -53,11 +49,15 @@ class CaptumExplanationImpl(
         self.remote_llm_attr_shap = None
         self.remote_llm_attr_shap_sampling = None
         self._scheduler = Scheduler()
+        # TODO: use persistent storage..?
+        self.artifacts_dir = Path(os.environ.get("LLAMA_ARTIFACTS_DIR", "/tmp/llama_stack_artifacts"))
     
     async def shutdown(self) -> None:
         await self._scheduler.shutdown()
 
     async def initialize(self) -> None:
+        self.artifacts_dir.mkdir(parents=True, exist_ok=True)
+
         placeholder_model = Module()
         placeholder_model.device = "cpu"
 
@@ -75,13 +75,24 @@ class CaptumExplanationImpl(
         self.remote_llm_attr_shap_sampling = RemoteLLMAttribution(attr_method=attr_shap_sampling, provider=vllm_provider, tokenizer=self.tokenizer)
 
     @staticmethod
-    def _explanation_to_artifact(explanation: ExplanationResponse) -> JobArtifact:
+    def _explanation_to_artifact(explanation: ExplanationResponse, job_dir: Path) -> JobArtifact:
+        # Create a unique filename for this explanation
+        artifact_id = str(uuid.uuid4())
+        artifact_path = job_dir / f"{artifact_id}.json"
+        
+        with open(artifact_path, "w") as f:
+            json.dump(explanation.model_dump(), f)
+        
+        metadata = {
+            "artifact_id": artifact_id,
+            "created_at": str(datetime.now().isoformat())
+        }
 
         return JobArtifact(
             type=ExplanationArtifactType.EXPLANATION.value,
             name="explanation",
-            uri=None,
-            metadata=explanation.model_dump()
+            uri=str(artifact_path),
+            metadata=metadata
         )
 
     async def explain(
@@ -154,6 +165,10 @@ class CaptumExplanationImpl(
     ) -> ExplanationJob:
         
         job_uuid = str(uuid.uuid4())
+        
+        # Create job-specific directory
+        job_dir = self.artifacts_dir / "explanations" / job_uuid
+        job_dir.mkdir(parents=True, exist_ok=True)
 
         if target and len(target) != len(content):
             raise ValueError("target must be the same length as content")
@@ -174,7 +189,10 @@ class CaptumExplanationImpl(
                         num_trials=num_trials,
                         gen_args=gen_args
                     )
-                    artifact = self._explanation_to_artifact(explanation)
+                    
+                    # Save explanation to file
+                    artifact = self._explanation_to_artifact(explanation, job_dir)
+                    
                     on_artifact_collected_cb(artifact)
 
                 on_status_change_cb(SchedulerJobStatus.completed)
@@ -220,10 +238,15 @@ class CaptumExplanationImpl(
 
     async def get_explanation_job_artifacts(self, job_uuid: str) -> ExplanationJobResultsResponse:
         job = self._scheduler.get_job(job_uuid)
-        explanations = [
-            ExplanationResponse(**artifact.metadata)
-            for artifact in job.artifacts
-            if artifact.type == ExplanationArtifactType.EXPLANATION.value
-        ]
+        explanations = []
+        
+        for artifact in job.artifacts:
+            if artifact.type == ExplanationArtifactType.EXPLANATION.value:
+                artifact_path = self.artifacts_dir / artifact.uri
+                if artifact_path.exists():
+                    with open(artifact_path, "r") as f:
+                        explanation_data = json.load(f)
+                    explanations.append(ExplanationResponse(**explanation_data))
+        
         return ExplanationJobResultsResponse(job_uuid=job_uuid, results=explanations)
 
