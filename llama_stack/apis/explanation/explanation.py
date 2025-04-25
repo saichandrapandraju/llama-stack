@@ -4,16 +4,15 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
-from llama_stack.apis.inference import InterleavedContent
 from llama_stack.apis.common.job_types import JobStatus
 from llama_stack.schema_utils import json_schema_type, webmethod
 
 @json_schema_type
 class TextTemplateInputSchema(BaseModel):
-    template: InterleavedContent
-    values: Union[List[InterleavedContent], Dict[str, InterleavedContent]]
-    baselines: Optional[Union[List[InterleavedContent], Dict[str, List[InterleavedContent]]]] = None
-    mask: Optional[Dict[InterleavedContent, int]] = None
+    template: str
+    values: Union[List[str], Dict[str, str]]
+    baselines: Optional[Union[List[str], Dict[str, List[Union[str, List[str], List[List[str]]]]]]] = None
+    mask: Optional[Union[List[int], Dict[str, int]]] = None
 
 @json_schema_type
 class ExplanationResponse(BaseModel):
@@ -55,7 +54,7 @@ class Explanation(Protocol):
     async def explain(
         self,
         model_id: str,
-        content: Union[InterleavedContent, TextTemplateInputSchema],
+        content: Union[str, TextTemplateInputSchema],
         algorithm: str,
         target: Optional[str] = None,
         skip_tokens: Optional[List[Union[int, str]]] = None,
@@ -67,7 +66,7 @@ class Explanation(Protocol):
     async def batch_explain(
         self,
         model_id: str,
-        content: List[Union[InterleavedContent, TextTemplateInputSchema]],
+        content: List[Union[str, TextTemplateInputSchema]],
         algorithm: str,
         target: Optional[List[str]] = [],
         skip_tokens: Optional[List[Union[int, str]]] = None,

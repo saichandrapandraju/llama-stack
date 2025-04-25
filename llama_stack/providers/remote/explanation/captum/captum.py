@@ -14,7 +14,6 @@ from llama_stack.apis.explanation import (
     ExplanationJobResultsResponse,
     ListExplanationJobsResponse
 )
-from llama_stack.apis.inference import InterleavedContent
 from .config import CaptumExplanationConfig
 from captum.attr import (
     FeatureAblation,
@@ -25,7 +24,8 @@ from captum.attr import (
     RemoteLLMAttribution,
     VLLMProvider,
     TextTokenInput,
-    TextTemplateInput
+    TextTemplateInput,
+    ProductBaselines
 )
 import uuid
 from llama_stack.providers.utils.scheduler import JobArtifact, JobStatus as SchedulerJobStatus, Scheduler
@@ -114,7 +114,7 @@ class CaptumExplanationImpl(
     async def explain(
             self,
             model_id:str,
-            content: Union[InterleavedContent, TextTemplateInputSchema],
+            content: Union[str, TextTemplateInputSchema],
             algorithm: str,
             target: Optional[str] = None,
             skip_tokens: Optional[List[Union[int, str]]] = None,
@@ -138,28 +138,38 @@ class CaptumExplanationImpl(
 
         attr_method = self.modelid_algorithm_to_remote_attr[f"{model_id}_{algorithm}"]
 
-        if isinstance(content, TextTemplateInputSchema): # TODO: properly parse template input
-            baseline_content = {}
-            if content.baselines is not None and isinstance(content.baselines, Dict):
-                for _,v in content.baselines.items():
-                    assert len(v) == 2
-                    key = v[0]
-                    value = v[1]
+        if isinstance(content, TextTemplateInputSchema): # properly parse template input
+            baselines = None
+            if isinstance(content.baselines, Dict):
+                baseline_content = {}
+                for _, key_value_tuples in content.baselines.items():
+                    if len(key_value_tuples) != 2:
+                        raise ValueError(f"Invalid key-value tuple: {key_value_tuples}. Make sure the list only contains two elements. "
+                                         "The first element is the key and the second element is the value.")
+                    key = key_value_tuples[0]
+                    value = key_value_tuples[1]
                     if isinstance(key, List):
                         key = tuple(key)
-                    # if isinstance[value[0], List]:
-                    #     value = list(map(tuple, value))
+                    if isinstance(value, List) and isinstance(value[0], List):
+                        value = list(map(tuple, value))
                     baseline_content[key] = value
-                
+                baselines = ProductBaselines(baseline_content)
+
+            elif isinstance(content.baselines, List):
+                baselines = content.baselines
+
+            else:
+                raise ValueError(f"Invalid baselines type: {type(content.baselines)}")
+
             inp = TextTemplateInput(
                 template = content.template,
                 values = content.values,
-                baselines = baseline_content if baseline_content else content.baselines,
+                baselines = baselines,
                 mask = content.mask
             )
         else:
             inp = TextTokenInput(
-                content,
+                text=content,
                 tokenizer=self.model_id_to_provider_tokenizer[model_id][1],
                 skip_tokens=skip_tokens
             )
@@ -180,7 +190,7 @@ class CaptumExplanationImpl(
     async def batch_explain(
         self,
         model_id: str,
-        content: List[Union[InterleavedContent, TextTemplateInputSchema]],
+        content: List[Union[str, TextTemplateInputSchema]],
         algorithm: str, # common to all items
         target: Optional[List[str]] = None,  # per item
         skip_tokens: Optional[List[Union[int, str]]] = None, # common to all items
