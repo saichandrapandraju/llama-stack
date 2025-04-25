@@ -801,6 +801,7 @@
   ],
   "remote-captum": [
     "git+https://github.com/saichandrapandraju/captum@remote-logprobs#egg=captum[remote]",
-    "transformers"
+    "transformers",
+    "scikit-learn"
   ]
 }

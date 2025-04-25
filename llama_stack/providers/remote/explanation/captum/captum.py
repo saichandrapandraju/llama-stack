@@ -20,8 +20,8 @@ from captum.attr import (
     FeatureAblation,
     ShapleyValues,
     ShapleyValueSampling,
-    # Lime,
-    # KernelShap,
+    Lime,
+    KernelShap,
     RemoteLLMAttribution,
     VLLMProvider,
     TextTokenInput,
@@ -39,16 +39,32 @@ log = logging.getLogger(__name__)
 class ExplanationArtifactType(Enum):
     EXPLANATION = "explanation"
 
+# create an enum that maps to the Captum algorithm classes
+class CaptumAlgorithm(Enum):
+    FA = FeatureAblation
+    SHAP = ShapleyValues
+    SHAP_SAMPLING = ShapleyValueSampling
+    LIME = Lime
+    KERNEL_SHAP = KernelShap
+
+
 class CaptumExplanationImpl(
     Explanation
 ):
     def __init__(self, config: CaptumExplanationConfig) -> None:
         self.config = config
-        self.tokenizer = None
-        self.remote_llm_attr_fa = None
-        self.remote_llm_attr_shap = None
-        self.remote_llm_attr_shap_sampling = None
+        # map of model_id -> (vllm_provider, tokenizer)
+        #TODO: use 'ModelStore'..?
+        self.model_id_to_provider_tokenizer = {}
+
+        # map of algorithm_id -> attr_object
+        self.algorithm_id_to_attr_object = {}
+
+        # map of {model_id}_{algorithm} -> remote_attr
+        self.modelid_algorithm_to_remote_attr = {}
+
         self._scheduler = Scheduler()
+        
         # TODO: use persistent storage..?
         self.artifacts_dir = Path(os.environ.get("LLAMA_ARTIFACTS_DIR", "/tmp/llama_stack_artifacts"))
     
@@ -61,18 +77,18 @@ class CaptumExplanationImpl(
         placeholder_model = Module()
         placeholder_model.device = "cpu"
 
-        attr_fa = FeatureAblation(placeholder_model)
-        attr_shap = ShapleyValues(placeholder_model)
-        attr_shap_sampling = ShapleyValueSampling(placeholder_model)
+        if len(self.config.llms) != len(self.config.tokenizers):
+            raise ValueError("The number of LLMs and tokenizers must be the same")
+        if not self.config.llms or not self.config.tokenizers:
+            raise ValueError("The LLMs and tokenizers must be non-empty")
 
-        self.tokenizer = AutoTokenizer.from_pretrained(self.config.tokenizer)
-        # openai_api = f"http://localhost:{os.environ.get('LLAMA_STACK_PORT', 8321)}/v1/openai/v1"
-        log.info(f"Initializing VLLMProvider with base_url={self.config.url}")
-        vllm_provider = VLLMProvider(api_url=self.config.url)
-
-        self.remote_llm_attr_fa = RemoteLLMAttribution(attr_method=attr_fa, provider=vllm_provider, tokenizer=self.tokenizer)
-        self.remote_llm_attr_shap = RemoteLLMAttribution(attr_method=attr_shap, provider=vllm_provider, tokenizer=self.tokenizer)
-        self.remote_llm_attr_shap_sampling = RemoteLLMAttribution(attr_method=attr_shap_sampling, provider=vllm_provider, tokenizer=self.tokenizer)
+        for llm_url, tokenizer_name in zip(self.config.llms, self.config.tokenizers):
+            vllm_provider = VLLMProvider(api_url=llm_url)
+            tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
+            self.model_id_to_provider_tokenizer[vllm_provider.model_name] = (vllm_provider, tokenizer)
+        
+        for algorithm_id, algorithm_cls in CaptumAlgorithm.__members__.items():
+            self.algorithm_id_to_attr_object[algorithm_id.lower()] = algorithm_cls.value(placeholder_model)
 
     @staticmethod
     def _explanation_to_artifact(explanation: ExplanationResponse, job_dir: Path) -> JobArtifact:
@@ -106,9 +122,23 @@ class CaptumExplanationImpl(
             gen_args: Optional[Dict[str, Union[str, int]]] = None,
         ) -> ExplanationResponse:
         
-        assert self.tokenizer is not None
+        if model_id not in self.model_id_to_provider_tokenizer:
+            raise ValueError(f"Model {model_id} not found. Available models: {list(self.model_id_to_provider_tokenizer.keys())}")
+        
+        if algorithm.lower() not in self.algorithm_id_to_attr_object:
+            raise ValueError(f"Algorithm {algorithm} not found. Should be one of: {list(self.algorithm_id_to_attr_object.keys())}")
+        algorithm = algorithm.lower()
+        
+        if f"{model_id}_{algorithm}" not in self.modelid_algorithm_to_remote_attr:
+            self.modelid_algorithm_to_remote_attr[f"{model_id}_{algorithm}"] = RemoteLLMAttribution(
+                attr_method=self.algorithm_id_to_attr_object[algorithm],
+                provider=self.model_id_to_provider_tokenizer[model_id][0],
+                tokenizer=self.model_id_to_provider_tokenizer[model_id][1],
+            )
 
-        if isinstance(content, TextTemplateInputSchema):
+        attr_method = self.modelid_algorithm_to_remote_attr[f"{model_id}_{algorithm}"]
+
+        if isinstance(content, TextTemplateInputSchema): # TODO: properly parse template input
             baseline_content = {}
             if content.baselines is not None and isinstance(content.baselines, Dict):
                 for _,v in content.baselines.items():
@@ -130,27 +160,21 @@ class CaptumExplanationImpl(
         else:
             inp = TextTokenInput(
                 content,
-                tokenizer=self.tokenizer,
+                tokenizer=self.model_id_to_provider_tokenizer[model_id][1],
                 skip_tokens=skip_tokens
             )
-        
-        attr_method = None
-        if algorithm == 'fa':
-            attr_method = self.remote_llm_attr_fa
-        elif algorithm == 'shap':
-            attr_method = self.remote_llm_attr_shap
-        elif algorithm == 'shap_sampling':
-            attr_method = self.remote_llm_attr_shap_sampling
-        else:
-            raise ValueError(f"algorithm must be one of (fa, shap, shap_sampling)")
         
         attr_res = attr_method.attribute(inp, target=target, skip_tokens=skip_tokens, gen_args=gen_args, num_trials=num_trials)
 
         return ExplanationResponse(
             input_features=attr_res.input_tokens,
             output_features=attr_res.output_tokens,
-            attribution=attr_res.token_attr.tolist(),
-            extra_attributions={"sequence_attribution": attr_res.seq_attr_dict}
+            token_attribution=attr_res.token_attr.tolist() if attr_res.token_attr is not None else [],
+            sequence_attributions=attr_res.seq_attr_dict if attr_res.seq_attr_dict is not None else {},
+            metadata={
+                "model_id": model_id,
+                "tokenizer": self.model_id_to_provider_tokenizer[model_id][1].name_or_path,
+            }
         )
     
     async def batch_explain(
@@ -250,3 +274,14 @@ class CaptumExplanationImpl(
         
         return ExplanationJobResultsResponse(job_uuid=job_uuid, results=explanations)
 
+    async def get_explanation_models(self) -> List[Dict[str, str]]:
+        
+        response = []
+        for model_id, (provider, tokenizer) in self.model_id_to_provider_tokenizer.items():
+            response.append({
+                "model_id": model_id,
+                "url": provider.api_url,
+                "tokenizer": tokenizer.name_or_path
+            })
+
+        return response

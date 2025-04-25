@@ -12,8 +12,8 @@ def get_distribution_template() -> DistributionTemplate:
         provider_id="captum-explanation",
         provider_type="remote::captum",
         config=CaptumExplanationConfig.sample_run_config(
-            url="${env.VLLM_URL:http://localhost:8000/v1}",
-            tokenizer="${env.TOKENIZER}"
+            llms="${env.LLMS}",
+            tokenizers="${env.TOKENIZERS}"
         ),
     )
 
@@ -33,22 +33,6 @@ def get_distribution_template() -> DistributionTemplate:
             "LLAMA_STACK_PORT": (
                 "8321",
                 "Port for the Llama Stack distribution server",
-            ),
-            "INFERENCE_MODEL": (
-                "meta-llama/Llama-3.2-3B-Instruct",
-                "Inference model loaded into the vLLM server",
-            ),
-            "TOKENIZER": (
-                "meta-llama/Llama-3.2-3B-Instruct",
-                "Tokenizer loaded into the captum remote provider",
-            ),
-            "VLLM_URL": (
-                "http://host.docker.internal:5100/v1",
-                "URL of the vLLM server with the main inference model",
-            ),
-            "MAX_TOKENS": (
-                "4096",
-                "Maximum number of tokens for generation",
             ),
         },
     )

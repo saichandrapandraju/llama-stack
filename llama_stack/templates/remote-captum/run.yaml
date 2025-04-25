@@ -8,8 +8,8 @@ providers:
   - provider_id: captum-explanation
     provider_type: remote::captum
     config:
-      url: ${env.VLLM_URL:http://localhost:8000/v1}
-      tokenizer: ${env.TOKENIZER}
+      llms: ${env.LLMS}
+      tokenizers: ${env.TOKENIZERS}
   telemetry:
   - provider_id: meta-reference
     provider_type: inline::meta-reference

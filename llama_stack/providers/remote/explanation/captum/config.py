@@ -1,25 +1,34 @@
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class CaptumExplanationConfig(BaseModel):
-    url: Optional[str] = Field(
-        default=None,
-        description="The URL for the remote model serving endpoint",
+    llms: List[str] = Field(
+        default=[],
+        description="The URLs for the remote model serving endpoints",
     )
-    tokenizer: Optional[str] = Field(
-        default=None,
-        description="The tokenizer for the remote model serving endpoint",
+    tokenizers: List[str] = Field(
+        default=[],
+        description="The HuggingFace tokenizer names for the remote model serving endpoints",
     )
+    @field_validator("llms", "tokenizers", mode="before")
+    @classmethod
+    def validate_llms_tokenizers(cls, v):
+        if isinstance(v, str):
+            return [item.strip() for item in v.split(",")]
+        return v
+    
     @classmethod
     def sample_run_config(
         cls,
-        url: str = "${env.VLLM_URL}",
-        tokenizer: str = "${env.TOKENIZER}",
+        llms: str = "${env.LLMS}",
+        tokenizers: str = "${env.TOKENIZERS}",
         **kwargs,
     ) -> Dict[str, Any]:
+        
         return {
-            "url": url,
-            "tokenizer": tokenizer,
+            "llms": llms,
+            "tokenizers": tokenizers,
+            **kwargs,
         }

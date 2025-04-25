@@ -1,6 +1,4 @@
-from typing import Optional, Protocol, runtime_checkable, List, Dict, Union, Tuple
-
-from enum import Enum
+from typing import Optional, Protocol, runtime_checkable, List, Dict, Union, Any
 
 from datetime import datetime
 
@@ -19,10 +17,12 @@ class TextTemplateInputSchema(BaseModel):
 
 @json_schema_type
 class ExplanationResponse(BaseModel):
-    input_features: List[InterleavedContent]
-    output_features: List[InterleavedContent]
-    attribution: List[List[float]]
-    extra_attributions: Optional[Dict[str, Dict[InterleavedContent, float]]]
+    input_features: List[str]
+    output_features: List[str]
+    token_attribution: List[List[float]]    # 2D list of floats of size (output_features, input_features)
+    sequence_attributions: Dict[str, float]    # Dict mapping input_features to sum of attribution values across all output_features
+    extra_attributions: Optional[Dict[str, Any]] = None     # Dict for any other attributions
+    metadata: Optional[Dict[str, Any]] = None    # Dict for metadata like model_id, algorithm, tokenizer,etc.
 
 @json_schema_type
 class ExplanationJobStatusResponse(BaseModel):
@@ -34,11 +34,6 @@ class ExplanationJobStatusResponse(BaseModel):
     scheduled_at: Optional[datetime] = None
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
-
-# class ExplanationAlgo(Enum):
-#     feature_ablation: "fa"
-#     shapley_values: "shap"
-#     shapley_value_sampling: "shap_sampling"
 
 class ExplanationJob(BaseModel):
     job_uuid: str
@@ -91,3 +86,7 @@ class Explanation(Protocol):
 
     @webmethod(route="/explanation/job/artifacts", method="GET")
     async def get_explanation_job_artifacts(self, job_uuid: str) -> ExplanationJobResultsResponse: ...
+
+    # TODO: implement 'ModelStore'
+    @webmethod(route="/explanation/models", method="GET")
+    async def get_explanation_models(self) -> List[Dict[str, str]]: ...
