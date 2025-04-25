@@ -65,7 +65,7 @@ class CaptumExplanationImpl(
 
         self._scheduler = Scheduler()
         
-        # TODO: use persistent storage..?
+        # TODO: use persistent storage (/files api..?)
         self.artifacts_dir = Path(os.environ.get("LLAMA_ARTIFACTS_DIR", "/tmp/llama_stack_artifacts"))
     
     async def shutdown(self) -> None:

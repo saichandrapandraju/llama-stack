@@ -12,8 +12,8 @@ def get_distribution_template() -> DistributionTemplate:
         provider_id="captum-explanation",
         provider_type="remote::captum",
         config=CaptumExplanationConfig.sample_run_config(
-            llms="${env.LLMS}",
-            tokenizers="${env.TOKENIZERS}"
+            llms="${env.VLLM_URL}",
+            tokenizers="${env.TOKENIZER}"
         ),
     )
 

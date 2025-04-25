@@ -22,8 +22,8 @@ class CaptumExplanationConfig(BaseModel):
     @classmethod
     def sample_run_config(
         cls,
-        llms: str = "${env.LLMS}",
-        tokenizers: str = "${env.TOKENIZERS}",
+        llms: str = "${env.VLLM_URL}",
+        tokenizers: str = "${env.TOKENIZER}",
         **kwargs,
     ) -> Dict[str, Any]:
         

@@ -8,8 +8,8 @@ providers:
   - provider_id: captum-explanation
     provider_type: remote::captum
     config:
-      llms: ${env.LLMS}
-      tokenizers: ${env.TOKENIZERS}
+      llms: ${env.VLLM_URL}
+      tokenizers: ${env.TOKENIZER}
   telemetry:
   - provider_id: meta-reference
     provider_type: inline::meta-reference
