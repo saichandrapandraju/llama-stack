@@ -16,28 +16,16 @@ providers:
     config:
       service_name: "${env.OTEL_SERVICE_NAME:\u200B}"
       sinks: ${env.TELEMETRY_SINKS:console,sqlite}
-      sqlite_db_path: ${env.SQLITE_DB_PATH:~/.llama/distributions/remote-vllm/trace_store.db}
+      sqlite_db_path: ${env.SQLITE_DB_PATH:~/.llama/distributions/remote-captum/trace_store.db}
 metadata_store:
   type: sqlite
-  db_path: ${env.SQLITE_STORE_DIR:~/.llama/distributions/remote-vllm}/registry.db
+  db_path: ${env.SQLITE_STORE_DIR:~/.llama/distributions/remote-captum}/registry.db
 models: []
-# - metadata: {}
-#   model_id: ${env.INFERENCE_MODEL}
-#   provider_id: vllm-inference
-#   model_type: llm
 shields: []
 vector_dbs: []
 datasets: []
 scoring_fns: []
 benchmarks: []
-tool_groups:
-- toolgroup_id: builtin::websearch
-  provider_id: tavily-search
-- toolgroup_id: builtin::rag
-  provider_id: rag-runtime
-- toolgroup_id: builtin::code_interpreter
-  provider_id: code-interpreter
-- toolgroup_id: builtin::wolfram_alpha
-  provider_id: wolfram-alpha
+tool_groups: []
 server:
   port: 8321
