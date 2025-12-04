@@ -9,20 +9,20 @@ distribution_spec:
     - provider_type: inline::milvus
     safety:
     - provider_type: remote::trustyai_fms
-      module: llama_stack_provider_trustyai_fms==0.2.2
+      module: llama_stack_provider_trustyai_fms==0.3.1
     agents:
     - provider_type: inline::meta-reference
     eval:
     - provider_type: remote::trustyai_lmeval
-      module: llama_stack_provider_lmeval==0.2.4
+      module: llama_stack_provider_lmeval==0.4.1
     - provider_type: inline::trustyai_garak
-      module: llama_stack_provider_trustyai_garak==0.1.4
+      module: llama_stack_provider_trustyai_garak==0.1.6
     - provider_type: remote::trustyai_garak
-      module: llama_stack_provider_trustyai_garak[remote]==0.1.4
+      module: llama_stack_provider_trustyai_garak[remote]==0.1.6
     - provider_type: inline::trustyai_ragas
-      module: llama_stack_provider_ragas==0.3.0
+      module: llama_stack_provider_ragas==0.5.1
     - provider_type: remote::trustyai_ragas
-      module: llama_stack_provider_ragas[remote]==0.3.0
+      module: llama_stack_provider_ragas[remote]==0.5.1
     datasetio:
     - provider_type: remote::huggingface
     - provider_type: inline::localfs
@@ -30,8 +30,6 @@ distribution_spec:
     - provider_type: inline::basic
     - provider_type: inline::llm-as-judge
     - provider_type: inline::braintrust
-    telemetry:
-    - provider_type: inline::meta-reference
     tool_runtime:
     - provider_type: remote::brave-search
     - provider_type: remote::tavily-search
