@@ -213,6 +213,9 @@ class EvalRouter(Eval):
             request: The new-style request object (preferred)
             benchmark_id: (Deprecated) The benchmark ID
             job_id: (Deprecated) The job ID
+
+        Returns:
+            None
         """
         resolved_request = resolve_job_cancel_request(request, benchmark_id=benchmark_id, job_id=job_id)
         logger.debug(f"EvalRouter.job_cancel: {resolved_request.benchmark_id}, {resolved_request.job_id}")
