@@ -28,17 +28,19 @@ from .models import (
     RunEvalRequest,
 )
 
+_DEPRECATION_TARGET = "0.6.0"
+
 _DEPRECATION_MESSAGE = (
     "Passing individual parameters to {method_name}() is deprecated. "
     "Please use {request_class}(benchmark_id=..., ...) instead. "
-    "This will be removed in a future release."
+    "This will be removed in version {target}."
 )
 
 
 def _emit_deprecation_warning(method_name: str, request_class: str) -> None:
     """Emit a deprecation warning for old-style parameter usage."""
     warnings.warn(
-        _DEPRECATION_MESSAGE.format(method_name=method_name, request_class=request_class),
+        _DEPRECATION_MESSAGE.format(method_name=method_name, request_class=request_class, target=_DEPRECATION_TARGET),
         DeprecationWarning,
         stacklevel=4,
     )
