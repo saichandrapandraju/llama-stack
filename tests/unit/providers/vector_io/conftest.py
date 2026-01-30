@@ -17,7 +17,7 @@ from llama_stack.providers.inline.vector_io.faiss.faiss import FaissIndex, Faiss
 from llama_stack.providers.inline.vector_io.qdrant.config import QdrantVectorIOConfig
 from llama_stack.providers.inline.vector_io.sqlite_vec import SQLiteVectorIOConfig
 from llama_stack.providers.inline.vector_io.sqlite_vec.sqlite_vec import SQLiteVecIndex, SQLiteVecVectorIOAdapter
-from llama_stack.providers.remote.vector_io.pgvector.config import PGVectorVectorIOConfig
+from llama_stack.providers.remote.vector_io.pgvector.config import PGVectorHNSWVectorIndex, PGVectorVectorIOConfig
 from llama_stack.providers.remote.vector_io.pgvector.pgvector import PGVectorIndex, PGVectorVectorIOAdapter
 from llama_stack.providers.remote.vector_io.qdrant.qdrant import QdrantIndex, QdrantVectorIOAdapter
 from llama_stack_api import Chunk, ChunkMetadata, QueryChunksResponse, VectorStore
@@ -247,7 +247,13 @@ async def pgvector_vec_index(embedding_dimension, mock_psycopg2_connection):
 
     with patch("llama_stack.providers.remote.vector_io.pgvector.pgvector.psycopg2"):
         with patch("llama_stack.providers.remote.vector_io.pgvector.pgvector.execute_values"):
-            index = PGVectorIndex(vector_store, embedding_dimension, connection, distance_metric="COSINE")
+            index = PGVectorIndex(
+                vector_store,
+                embedding_dimension,
+                connection,
+                distance_metric="COSINE",
+                vector_index=PGVectorHNSWVectorIndex(m=16, ef_construction=64),
+            )
             index._test_chunks = []
             original_add_chunks = index.add_chunks
 
@@ -276,6 +282,8 @@ async def pgvector_vec_adapter(unique_kvstore_config, mock_inference_api, embedd
         db="test_db",
         user="test_user",
         password="test_password",
+        distance_metric="COSINE",
+        vector_index=PGVectorHNSWVectorIndex(m=16, ef_construction=64),
         persistence=unique_kvstore_config,
     )
 

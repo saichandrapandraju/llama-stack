@@ -71,7 +71,7 @@ providers:
     provider_type: remote::vertexai
     config:
       project: ${env.VERTEX_AI_PROJECT:=}
-      location: ${env.VERTEX_AI_LOCATION:=us-central1}
+      location: ${env.VERTEX_AI_LOCATION:=global}
   - provider_id: groq
     provider_type: remote::groq
     config:
@@ -127,6 +127,11 @@ providers:
       db: ${env.PGVECTOR_DB:=}
       user: ${env.PGVECTOR_USER:=}
       password: ${env.PGVECTOR_PASSWORD:=}
+      distance_metric: COSINE
+      vector_index:
+        type: HNSW
+        m: 16
+        ef_construction: 64
       persistence:
         namespace: vector_io::pgvector
         backend: kv_default
